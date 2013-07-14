@@ -248,32 +248,36 @@ def actual_moves(color, moves, i, j)
   add_starting_position(remove_invalid(moves, color), i, j)
 end
 
+# generate moves for a certain color at a certain square
+def generate_moves_at(color, i, j)
+  if color_of(i, j) == color
+    # get piece type by mod 7
+    piece_type = @board[i][j] % 7
+    gen_moves = case piece_type
+                when WP
+                  pawn_moves(color, i, j)
+                when WR
+                  rook_moves(color, i, j)
+                when WN
+                  knight_moves(color, i, j)
+                when WB
+                  bishop_moves(color, i, j)
+                when WQ
+                  queen_moves(color, i, j)
+                when WK
+                  king_moves(color, i, j)
+                end
+    actual_moves(color, gen_moves, i, j)
+  end
+end
+
 # generate all moves for a certain color
 def generate_moves(color)
   moves = []
   0.upto(7) do |i|
     0.upto(7) do |j|
-      # loop through board pieces
-      if color_of(i, j) == color
-        # get piece type by modding by 7
-        # so 8 becomes 1 (BP -> WP), etc
-        piece_type = @board[i][j] % 7
-        gen_moves = case piece_type
-                    when WP
-                      pawn_moves(color, i, j)
-                    when WR
-                      rook_moves(color, i, j)
-                    when WN
-                      knight_moves(color, i, j)
-                    when WB
-                      bishop_moves(color, i, j)
-                    when WQ
-                      queen_moves(color, i, j)
-                    when WK
-                      king_moves(color, i, j)
-                    end
-        moves += actual_moves(color, gen_moves, i, j)
-      end
+      piece_moves = generate_moves_at(color, i, j)
+      moves.concat(piece_moves) unless piece_moves.nil?
     end
   end
   moves
@@ -313,25 +317,10 @@ def other_color(color)
   end
 end
 
-# has the king been captured in the search?
-def lost_king?(color)
-  @board.none? do |row|
-    row.any? do |piece|
-      if color == :white
-        piece == WK
-      else
-        piece == BK
-      end
-    end
-  end
-end
-
 # minimize opponent's potential score
 def search_min(level, alpha, beta, color)
   # if we're at our depth limit, return the heuristic evaluation
   return evaluate(color) if level == 0
-  # if we lost the  king, return a very low losing score
-  return HIBOUND-level if lost_king?(other_color(color))
   moves = generate_moves(other_color(color))
   moves.each do |move|
     # loop through all potential moves
@@ -350,7 +339,6 @@ end
 def search_max(level, alpha, beta, color)
   # same as above, but now we're maximizing
   return evaluate(color) if level == 0
-  return LOBOUND+level if lost_king?(color)
   moves = generate_moves(color)
   moves.each do |move|
     replaced_piece = make_move(move)
@@ -396,6 +384,19 @@ def minimax(color)
   puts "Best move: " + move_string(best[1])
   puts "Evaluation score: #{best[0]}"
   best[1] # return the best move
+end
+
+# does one of this color's pieces place the other color in check?
+def color_check?(color)
+  moves = generate_moves(color)
+  moves.any? do |move|
+    attacking = @board[move[2]][move[3]]
+    if color == :black
+      attacking == WK
+    else
+      attacking == BK
+    end
+  end  
 end
 
 def move_string(move)
@@ -450,10 +451,13 @@ def play
     print "> "
     make_move(string_move(read_player_move()))
   end
+  in_check = false # is the computer in check?
   while true
     print_board()
     puts "Computer is thinking..."
     make_move(minimax(computer))
+    in_check = color_check?(computer)
+    puts "Check!" if in_check
     print_board()
     puts "Your move!"
     print "> "
