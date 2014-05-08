@@ -248,26 +248,29 @@ def actual_moves(color, moves, i, j)
   add_starting_position(remove_invalid(moves, color), i, j)
 end
 
+def call_move_gen(piece_type, color, i, j)
+  case piece_type
+  when WP
+    pawn_moves(color, i, j)
+  when WR
+    rook_moves(color, i, j)
+  when WN
+    knight_moves(color, i, j)
+  when WB
+    bishop_moves(color, i, j)
+  when WQ
+    queen_moves(color, i, j)
+  when WK
+    king_moves(color, i, j)
+  end
+end
+
 # generate moves for a certain color at a certain square
 def generate_moves_at(color, i, j)
   if color_of(i, j) == color
     # get piece type by mod 7
     piece_type = @board[i][j] % 7
-    gen_moves = case piece_type
-                when WP
-                  pawn_moves(color, i, j)
-                when WR
-                  rook_moves(color, i, j)
-                when WN
-                  knight_moves(color, i, j)
-                when WB
-                  bishop_moves(color, i, j)
-                when WQ
-                  queen_moves(color, i, j)
-                when WK
-                  king_moves(color, i, j)
-                end
-    actual_moves(color, gen_moves, i, j)
+    actual_moves(color, call_move_gen(piece_type, color, i, j), i, j)
   end
 end
 
